@@ -1,0 +1,3 @@
+unittests-script: ./run_unittest_script.sh
+conformance-tests-script: ./run_conformance_tests_script.sh
+verbose: true  # verbose flag, defaults to false if not set

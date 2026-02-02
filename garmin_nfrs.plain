@@ -1,0 +1,60 @@
+---
+description: "Non-functional requirements and environment configuration for the Garmin LLM Chat CLI"
+---
+
+***definitions***
+
+- :GarminChatApp: is the core application logic that coordinates data fetching and chat orchestration.
+
+- :GarminClient: is a service that interfaces with the Garmin Connect API.
+
+- :DataFile: is a file that stores the activity data. The default name is "garmin_data.json".
+
+- :LLMClient: is a service that interfaces with Google Gemini.
+
+- :ActivitySummary: is a data structure representing a Garmin activity. :ActivitySummary: has the following attributes:
+  - activityId - unique identifier
+  - activityName - name of the activity
+  - activityType - type of the activity
+  - startTimeLocal - date and time of the activity
+  - distance - total distance in meters
+  - duration - total time in seconds
+  - averageHR - average heart rate
+  - maxHR - maximum heart rate
+  - averageSpeed - average speed
+
+- :LapData: is a data structure representing a single lap within an activity. :LapData: has the following attributes:
+  - lapNumber - the sequence number
+  - startTime - start time of lap
+  - distance - lap distance
+  - duration - lap duration
+  - averageSpeed - lap speed
+  - averageHR - lap heart rate
+
+***technical specs***
+
+- :Implementation: must be in Python 3.9 or higher.
+- The project must include a "requirements.txt" file listing all dependencies.
+- The following environment variables must be used for authentication:
+  - GARMIN_EMAIL - The email for Garmin Connect
+  - GARMIN_PASSWORD - The password for Garmin Connect
+  - GOOGLE_API_KEY - The API key for Google Gemini
+- Use the standard "unittest" framework for unit testing.
+- The application must handle API errors gracefully by displaying a clear message and exiting with a non-zero status code.
+- Sensitive credentials must never be hardcoded and must be read directly from environment variables.
+
+- The reference file [garmin_example.py](./docs/garmin_example.py) should be used as a reference for the implementation of connecting to Garmin.
+
+- The LLM calls should be make through the google-genai Python package. client = genai.Client(api_key='GOOGLE_API_KEY'); response = client.models.generate_content(model=MODEL_ID,contents='Message text')
+
+***test specs***
+
+- The venv can be flexible about the versions of dependencies used. This should be reflected in the requirements.txt file.
+
+- The calls to the Garmin or LLM APIs should never be mocked during testing!
+
+- The LLM thinking level should be set to minimal during testing.
+
+- LLM responses may take some time to return. This should be reflected in the test timeouts.
+
+- Use printing to console to debug the application and tests.

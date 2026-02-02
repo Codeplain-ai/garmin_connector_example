@@ -1,0 +1,31 @@
+---
+import:
+  - garmin_nfrs
+---
+
+***technical specs***
+
+- Use the "garminconnect" Python package to implement the :GarminClient:.
+- The implementation should be located in the "src/garmin" folder.
+
+***functional specs***
+
+- Initialize the :GarminClient: and retrieve activities for any type of running
+  - Use GARMIN_EMAIL and GARMIN_PASSWORD for authentication
+  - Support session persistence to avoid re-authentication on every call
+  - The retrieved activities should have the string "running" in the activityType.
+  - Retrieve the activities available for the user in the last 180 days.
+  - For every retrieved :ActivitySummary:, obtain the associated :LapData: for each lap.
+
+  ***acceptance tests***
+  - The :GarminClient: should return a list of :ActivitySummary: objects. Each :ActivitySummary: must contain a non-empty list of :LapData: if laps were recorded.
+  - There should be more than 1 activity retrieved for the period of 180 days.
+  - There should be activities that occured in January 2026.
+
+- Implement funtions to Save and Load activities to and from file.
+  - Save: Convert a list of :ActivitySummary: and their :LapData: into a JSON-serializable format
+  - Save: Write the serialized data to :DataFile:
+  - Save: Overwrite existing data in the file if it exists
+  - Load: Read the content of :DataFile:
+  - Load: Parse the JSON content into a format usable by the LLM
+  - Load: Return an error if the file does not exist or is corrupted

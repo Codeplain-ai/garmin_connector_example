@@ -1,0 +1,18 @@
+---
+import:
+  - garmin_nfrs
+requires:
+  - llm_service
+---
+
+***functional specs***
+
+- Execute the data fetch workflow
+  - Use :GarminClient: to retrieve running activity and lap data.
+  - Pass the retrieved data to :GarminClient: for saving to disk
+  - Display progress updates to the user during fetching
+
+- Execute the chat workflow
+  - Use :GarminClient: to load stored activity data
+  - Initialize :LLMClient: with the loaded data as context
+  - Start an interactive loop for user input

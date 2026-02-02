@@ -1,0 +1,32 @@
+---
+import:
+  - garmin_nfrs
+requires:
+  - garmin_client
+---
+
+***definitions***
+
+- :ChatSession: is an interactive conversation state with the LLM.
+- :ContextPayload: is the text block containing the Garmin activity data used as context.
+
+***technical specs***
+
+- Use the "google-generativeai" Python package.
+- The model used must be "gemini-3-flash-preview".
+- The implementation should be located in the "src/llm" folder.
+
+- Use the environment variable GOOGLE_API_KEY for authentication
+
+- User input and the LLM response should be colored differently in the console.
+
+***functional specs***
+
+- Initialize the :LLMClient: and create :ChatSession: with context
+  - Take the content from :DataFile: as input
+  - Generate a system prompt that explains the user's running data is provided in JSON format
+  - Instruct the model to answer questions specifically about the runs, laps, heart rate, and speed found in the data
+
+- Process user messages
+  - Send the user's natural language query to the :ChatSession:
+  - Return the text response from the model with a streaming response.
