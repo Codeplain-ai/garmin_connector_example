@@ -4,6 +4,7 @@
 
 A ***plain implementation of a Garmin connector, that connects Garmin data to an LLM an lets you talk to your data.
 
+The rendered code is available in `./garmin_app/`
 
 ## Garmin Running ata Connector Description
 
