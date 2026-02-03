@@ -1,6 +1,6 @@
 ---
 import:
-  - garmin_nfrs
+  - garmin_reqs
 requires:
   - garmin_client
 ---
@@ -10,7 +10,7 @@ requires:
 - :ChatSession: is an interactive conversation state with the LLM.
 - :ContextPayload: is the text block containing the Garmin activity data used as context.
 
-***technical specs***
+***implementation reqs***
 
 - Use the "google-generativeai" Python package.
 - The model used must be "gemini-3-flash-preview".

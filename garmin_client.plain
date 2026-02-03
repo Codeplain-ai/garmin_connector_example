@@ -1,9 +1,9 @@
 ---
 import:
-  - garmin_nfrs
+  - garmin_reqs
 ---
 
-***technical specs***
+***implementation reqs***
 
 - Use the "garminconnect" Python package to implement the :GarminClient:.
 - The implementation should be located in the "src/garmin" folder.

@@ -31,7 +31,7 @@ description: "Non-functional requirements and environment configuration for the 
   - averageSpeed - lap speed
   - averageHR - lap heart rate
 
-***technical specs***
+***implementation reqs***
 
 - :Implementation: must be in Python 3.9 or higher.
 - The project must include a "requirements.txt" file listing all dependencies.
@@ -43,11 +43,11 @@ description: "Non-functional requirements and environment configuration for the 
 - The application must handle API errors gracefully by displaying a clear message and exiting with a non-zero status code.
 - Sensitive credentials must never be hardcoded and must be read directly from environment variables.
 
-- The reference file [garmin_example.py](./docs/garmin_example.py) should be used as a reference for the implementation of connecting to Garmin.
+- The reference file [GARMIN_DOCS.md](./docs/GARMIN_DOCS.md) should be used as a reference for the implementation of connecting to Garmin.
 
 - The LLM calls should be make through the google-genai Python package. client = genai.Client(api_key='GOOGLE_API_KEY'); response = client.models.generate_content(model=MODEL_ID,contents='Message text')
 
-***test specs***
+***test reqs***
 
 - The venv can be flexible about the versions of dependencies used. This should be reflected in the requirements.txt file.
 

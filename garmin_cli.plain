@@ -1,6 +1,6 @@
 ---
 import:
-  - garmin_nfrs
+  - garmin_reqs
 requires:
   - garmin_chat_app
 ---
@@ -11,12 +11,12 @@ requires:
 - :FetchCommand: is the command to retrieve data from Garmin.
 - :ChatCommand: is the command to start the interactive chat session.
 
-***technical specs***
+***implementation reqs***
 
 - The entry point for the :CLI: must be a file named "main.py".
 - Use the "argparse" library to handle command-line arguments.
 
-***test specs***
+***test reqs***
 
 - :CLI: tests must verify:
   - Correct routing of commands to app logic

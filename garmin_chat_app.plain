@@ -1,6 +1,6 @@
 ---
 import:
-  - garmin_nfrs
+  - garmin_reqs
 requires:
   - llm_service
 ---
