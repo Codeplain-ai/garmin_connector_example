@@ -19,7 +19,7 @@ fi
 current_dir=$(pwd)
 SOURCE_FOLDER=$1
 CONFORMANCE_TESTS_DIR=$2
-BUILD_SUBFOLDER=python_build_conformance
+BUILD_SUBFOLDER=".tmp/$SOURCE_FOLDER"
 
 echo "Current directory: $current_dir"
 echo "Source folder: $SOURCE_FOLDER"
@@ -33,14 +33,16 @@ fi
 mkdir -p "$BUILD_SUBFOLDER"
 
 # Copy source code to build folder
+echo "Copying source code from: $SOURCE_FOLDER to: $BUILD_SUBFOLDER"
 cp -R $SOURCE_FOLDER/* "$BUILD_SUBFOLDER/"
 
-# Move to the subfolder
+echo "Moving to the subfolder: $BUILD_SUBFOLDER"
 cd "$BUILD_SUBFOLDER" || exit $UNRECOVERABLE_ERROR_EXIT_CODE
 
 printf "Setting up Python environment for conformance testing...\n"
 
 # Create and activate virtual environment
+echo "Creating and activating virtual environment..."
 python3 -m venv venv
 source venv/bin/activate
 

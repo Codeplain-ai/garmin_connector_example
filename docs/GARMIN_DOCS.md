@@ -2,6 +2,8 @@
 
 This document provides comprehensive documentation for all activity-related functions in the `python-garminconnect` library, including retrieving activities, activity details, laps/splits, heart rate data, pace, power, and more.
 
+garminconnect version 0.2.38
+
 ## Table of Contents
 - [Setup](#setup)
 - [Retrieving Activities](#retrieving-activities)
