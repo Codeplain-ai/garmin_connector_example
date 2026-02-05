@@ -13,14 +13,8 @@ requires:
 
 - The entry point for the :CLI: must be a file named "garmin_chat.py".
 
-***test reqs***
-
-- :CLI: tests must verify:
-  - Handling of missing environment variables
-  - Graceful exit on "exit" command during chat
-
 ***functional specs***
 
 - Implement the functionality where the user calls :CLI: and the application starts.
-  - First, trigger the fetch workflow in :GarminChatApp:, providing visual feedback that data is being saved to "garmin_data.json".
-  - Then, trigger the chat workflow in :GarminChatApp:, maintaining a persistent loop until the user types "exit" or "quit" and printing the LLM responses clearly to the console.
+  - First, trigger the fetch workflow in :GarminChatApp:
+  - Then, trigger the chat workflow in :GarminChatApp:
