@@ -5,6 +5,10 @@ requires:
   - llm_service
 ---
 
+***implementation reqs***
+
+- The code should be implemented in the `app_flow` folder.
+
 ***functional specs***
 
 - Execute the data fetch workflow

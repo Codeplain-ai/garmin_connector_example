@@ -20,6 +20,8 @@ requires:
 
 - User input and the LLM response should be colored differently in the console.
 
+- The :ChatSession: should be able to handle multiple user messages and LLM responses. So that the context is persisted between messages.
+
 ***functional specs***
 
 - Initialize the :LLMClient: and create :ChatSession: with context

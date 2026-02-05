@@ -20,7 +20,7 @@ import:
   ***acceptance tests***
   - The :GarminClient: should return a list of :ActivitySummary: objects. Each :ActivitySummary: must contain a non-empty list of :LapData: if laps were recorded.
   - There should be more than 1 activity retrieved for the period of 180 days.
-  - There should be activities that occured in January 2026.
+  - There should be heart rate data for at least one of the activities.
 
 - Implement funtions to Save and Load activities to and from file.
   - Save: Convert a list of :ActivitySummary: and their :LapData: into a JSON-serializable format

@@ -1,39 +1,22 @@
-"""🏃‍♂️ Entry point to execute the Functional Requirement."""
-
-import sys
-import logging
-from src.garmin.client import GarminClient
-from src.garmin.storage import load_activities
+from .client import GarminClient
 
 def main():
-    """Execute the Garmin running data retrieval and persistence."""
-    # Configure logging to display progress updates to the user
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        stream=sys.stdout
-    )
-    
+    """Main entry point for Garmin data retrieval."""
     client = GarminClient()
+    client.login()
     
-    # 1. Fetch activities
+    print("Fetching running activities from the last 180 days...")
     activities = client.fetch_running_activities(days=180)
-    print(f"\n✅ Successfully retrieved {len(activities)} running activities.")
     
-    # 2. Save to file via GarminClient
+    print(f"Found {len(activities)} running activities.")
+    
+    # Save activities to file
     data_file = "garmin_data.json"
     client.save_to_file(activities, data_file)
     
-    # 3. Load from file (verifying the functional requirement)
-    loaded_data = load_activities(data_file)
-    print(f"📂 Loaded {len(loaded_data)} activities from {data_file}.")
-    
-    for activity in loaded_data:
-        print(f"- {activity['startTimeLocal']}: {activity['activityName']} ({len(activity['laps'])} laps)")
+    # Load activities from file to verify
+    loaded_activities = client.load_from_file(data_file)
+    print(f"Successfully reloaded {len(loaded_activities)} activities from {data_file}.")
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\nOperation cancelled by user.")
-        sys.exit(0)
+    main()

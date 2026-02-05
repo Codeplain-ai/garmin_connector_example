@@ -1,47 +1,28 @@
-#!/usr/bin/env python3
-"""🏃‍♂️ CLI entry point for the Garmin Running Analyst."""
-
-import argparse
 import sys
-import logging
-from src.app import GarminChatApp
+from src.app_flow.garmin_flow import run_data_fetch_workflow
+from src.app_flow.chat_flow import run_chat_workflow
 
 def main():
-    """CLI entry point handling commands for fetching and chatting."""
-    parser = argparse.ArgumentParser(
-        description="GarminChatApp: Analyze your Garmin running data with AI."
-    )
-    
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
-    # Fetch Command
-    subparsers.add_parser("fetch", help="Retrieve running data from Garmin Connect")
-    
-    # Chat Command
-    subparsers.add_parser("chat", help="Start an interactive chat session about your data")
-    
-    args = parser.parse_args()
-    
-    app = GarminChatApp()
-
+    """
+    Main entry point for the Garmin Chat application.
+    Sequences the data retrieval and the interactive AI chat.
+    """
     try:
-        if args.command == "fetch":
-            app.fetch_workflow()
-        elif args.command == "chat":
-            app.chat_workflow()
-        else:
-            # Default behavior: run both as per AdditionalFunctionalRequirement
-            logging.info("No command specified. Running full workflow (fetch + chat).")
-            app.run_all()
-            
+        # Step 1: Fetch and Save Data
+        run_data_fetch_workflow()
+        
+        # Step 2: Start Chat Session
+        run_chat_workflow()
+        
     except KeyboardInterrupt:
-        print("\n👋 Operation cancelled by user.")
+        print("\nApplication terminated by user.")
         sys.exit(0)
+    except SystemExit as e:
+        # Ensure we exit with the code provided, handling both int and None
+        sys.exit(e.code if e.code is not None else 1)
     except Exception as e:
-        print(f"\n❌ A critical error occurred: {e}", file=sys.stderr)
-        logging.error("Application failure details:", exc_info=True)
+        print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
     main()
-

@@ -1,75 +1,72 @@
-"""🤖 LLM Client implementation for Google Gemini."""
-
 import os
 import sys
-import logging
-from typing import Optional
+import json
 from google import genai
-from google.genai import types
-
-logger = logging.getLogger(__name__)
+from typing import List, Dict, Any
 
 class LLMClient:
-    """Service to interface with Google Gemini."""
-
-    def __init__(self, model_id: str = "gemini-3-flash-preview"):
-        self.api_key = os.getenv("GOOGLE_API_KEY")
-        if not self.api_key:
-            logger.error("CRITICAL: GOOGLE_API_KEY environment variable is not set.")
+    """Service to interface with Google Gemini for Garmin data analysis."""
+    
+    def __init__(self, model_id: str = "gemini-2.0-flash"):
+        api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+        if not api_key:
+            print("Error: GOOGLE_API_KEY environment variable is not set.", file=sys.stderr)
             sys.exit(1)
         
         try:
-            self.client = genai.Client(api_key=self.api_key)
+            self.client = genai.Client(api_key=api_key)
             self.model_id = model_id
         except Exception as e:
-            logger.error(f"CRITICAL: Failed to initialize Google GenAI Client: {e}")
+            print(f"Error initializing Gemini client: {e}")
             sys.exit(1)
 
-    def create_chat_session(self, context_data: str):
-        """Creates a chat session with the Garmin data as context.
-        
-        Args:
-            context_data: Stringified JSON of Garmin activities.
+    def create_chat_session(self, activity_data: List[Dict[str, Any]]):
         """
-        # Authoritative system instruction
-        system_instruction = (
-            "You are a specialized Garmin Running Analyst. "
-            "The user HAS PROVIDED their Garmin activity data below in JSON format. "
-            "You MUST use this provided data to answer all questions. "
-            "DO NOT claim you do not have access to the user's data, as it is provided directly here. "
-            "Answer questions specifically about the runs, laps, heart rate, and speed found in the data. "
-            "If the information is not in the data (like shoe brands or gear), state that it's not provided."
+        Initializes a chat session with the Garmin activity data provided as context.
+        """
+        # Convert activity data to a compact JSON string for the prompt
+        context_json = json.dumps(activity_data, indent=2)
+        
+        system_instructions = (
+            "You are a personal running coach and data analyst. "
+            "The following is a JSON representation of the user's Garmin running activities "
+            "from the last 180 days, including lap-by-lap details.\n\n"
+            f"DATA:\n{context_json}\n\n"
+            "INSTRUCTIONS:\n"
+            "1. Answer questions specifically based on the provided runs, laps, heart rate, and speed data.\n"
+            "2. If the user asks about trends, analyze the data to provide insights.\n"
+            "3. If information is not available in the data, state that clearly.\n"
+            "4. Be concise but encouraging."
         )
 
-        # History preamble to ensure context persistence even if config is overridden
-        history = [
-            types.Content(
-                role="user",
-                parts=[types.Part(text=(
-                    f"I am providing my Garmin running data for the last 180 days in JSON format. "
-                    f"Please analyze this data and answer my questions based ONLY on it.\n\n"
-                    f"--- DATA START ---\n{context_data}\n--- DATA END ---"
-                ))]
-            ),
-            types.Content(
-                role="model",
-                parts=[types.Part(text=(
-                    "I have received your Garmin running data. I am ready to analyze it and answer "
-                    "specific questions about your runs, laps, heart rate, and speed based on the JSON provided."
-                ))]
-            )
-        ]
-        
         try:
-            # Using the chat session feature of the google-genai SDK
-            return self.client.chats.create(
+            # Start a chat session using the new SDK pattern
+            chat = self.client.chats.create(
                 model=self.model_id,
-                history=history,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.2,
-                )
+                config={'system_instruction': system_instructions}
             )
+            return chat
         except Exception as e:
-            logger.error(f"CRITICAL: Failed to initiate LLM Chat Session: {e}")
+            print(f"Failed to initialize ChatSession: {e}")
             sys.exit(1)
+
+    @staticmethod
+    def get_user_input() -> str:
+        """Get input from user with specific color."""
+        # Blue for User input prompt
+        return input("\033[94mUser: \033[0m")
+
+    @staticmethod
+    def print_llm_response(response_stream):
+        """Print LLM response from a stream with specific color."""
+        # Green for LLM response prefix
+        print("\033[92mCoach: ", end="", flush=True)
+        try:
+            for chunk in response_stream:
+                if chunk.text:
+                    print(chunk.text, end="", flush=True)
+        except Exception as e:
+            print(f"\n[Error during streaming: {e}]", end="")
+        
+        # Reset color and add final newline
+        print("\033[0m\n")

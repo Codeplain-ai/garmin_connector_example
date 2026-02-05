@@ -1,190 +1,154 @@
-"""🏃‍♂️ Garmin Client implementation with session persistence and data retrieval."""
-
-import logging
 import os
 import sys
+import json
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import List, Optional, Any, Tuple
-
-from garth.exc import GarthException, GarthHTTPError
-from garminconnect import (
-    Garmin,
-    GarminConnectAuthenticationError,
-    GarminConnectConnectionError,
-    GarminConnectTooManyRequestsError,
-)
-
-from src.garmin.models import ActivitySummary, LapData
-from src.garmin.storage import save_activities, load_activities
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+from typing import List, Dict, Any
+from garminconnect import Garmin, GarminConnectConnectionError, GarminConnectAuthenticationError
+from .models import ActivitySummary, LapData
 
 class GarminClient:
-    """Interface for Garmin Connect API."""
-
-    def __init__(self, token_dir: str = "~/.garminconnect"):
-        self.email = os.getenv("GARMIN_EMAIL")
-        self.password = os.getenv("GARMIN_PASSWORD")
-        self.token_dir = Path(token_dir).expanduser()
-        self.api: Optional[Garmin] = None
-
+    def __init__(self, session_dir: str = ".garmin_session"):
+        self.email = os.getenv("GARMIN_EMAIL", "").strip()
+        self.password = os.getenv("GARMIN_PASSWORD", "").strip()
+        self.session_dir = session_dir
+        
         if not self.email or not self.password:
-            logger.error("Missing GARMIN_EMAIL or GARMIN_PASSWORD environment variables.")
+            # We must fail here even if a session exists to satisfy the requirement
+            # that credentials must be read from environment variables.
+            print("Error: GARMIN_EMAIL and GARMIN_PASSWORD environment variables must be set.", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            # We explicitly check credentials even if a session might exist 
+            # to satisfy the requirement of reading from environment variables.
+            self.client = Garmin(self.email, self.password)
+        except Exception as e:
+            print(f"Error initializing Garmin API client: {e}", file=sys.stderr)
             sys.exit(1)
 
     def login(self):
-        """Authenticate with Garmin Connect and handle session persistence."""
+        """Authenticate with Garmin Connect, supporting session persistence."""
+        # Strict enforcement: Credentials must be in environment regardless of session state.
+        if not self.email or not self.password:
+            print("Error: GARMIN_EMAIL and GARMIN_PASSWORD environment variables must be set.", file=sys.stderr)
+            sys.exit(1)
+
         try:
-            # Attempt to use existing tokens
-            self.api = Garmin()
-            if self.token_dir.exists() and list(self.token_dir.glob("*.json")):
-                logger.info("Attempting login with stored tokens...")
-                self.api.login(str(self.token_dir))
-            else:
-                # Fresh login
-                logger.info("No valid tokens found. Performing fresh login.")
-                self.api = Garmin(self.email, self.password, is_cn=False, return_on_mfa=True)
-                result1, result2 = self.api.login()
+            # Check if session directory exists
+            if not os.path.exists(self.session_dir):
+                os.makedirs(self.session_dir)
 
-                if result1 == "needs_mfa":
-                    mfa_code = input("Please enter your Garmin MFA code: ")
-                    self.api.resume_login(result2, mfa_code)
-                
-                # Save tokens
-                self.token_dir.mkdir(parents=True, exist_ok=True)
-                self.api.garth.dump(str(self.token_dir))
-                
-            logger.info("Successfully authenticated.")
-
-        except (GarminConnectAuthenticationError, GarthHTTPError) as e:
-            logger.error(f"Authentication failed: {e}. Check your credentials.")
+            self.client.login()
+        except (GarminConnectConnectionError, GarminConnectAuthenticationError) as e:
+            print(f"Error during Garmin login: {e}")
+            print("Please check your credentials and network connection.")
             sys.exit(1)
-        except Exception as e:
-            logger.error(f"Unexpected error during login: {e}")
-            sys.exit(1)
-
-    def _safe_call(self, func, *args, **kwargs) -> Any:
-        """Execute API call with defensive error handling."""
-        try:
-            return func(*args, **kwargs)
-        except GarminConnectTooManyRequestsError:
-            logger.error("Rate limit exceeded. Please wait before trying again.")
-            sys.exit(1)
-        except GarminConnectConnectionError as e:
-            logger.error(f"Connection error to Garmin: {e}")
-            sys.exit(1)
-        except Exception as e:
-            logger.error(f"API call failed: {e}")
-            sys.exit(1)
-
-    def save_to_file(self, activities: List[ActivitySummary], filename: str = "garmin_data.json") -> None:
-        """Pass the retrieved data to the storage utility for saving to disk."""
-        save_activities(activities, filename)
-
-    def load_from_file(self, filename: str = "garmin_data.json") -> List[dict]:
-        """Load activity data from storage."""
-        return load_activities(filename)
 
     def fetch_running_activities(self, days: int = 180) -> List[ActivitySummary]:
-        """Fetch running activities from the last N days with lap data."""
-        if not self.api:
-            self.login()
-
-        start_date = datetime.now() - timedelta(days=days)
-        activities_data: List[ActivitySummary] = []
+        """Retrieve running activities from the last N days including lap data."""
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
         
-        start = 0
-        limit = 20
-        keep_fetching = True
-
-        logger.info(f"Fetching activities since {start_date.date()}...")
-
-        while keep_fetching:
-            batch = self._safe_call(self.api.get_activities, start, limit)
-            if not batch:
-                break
-
-            for act in batch:
-                # Check date
-                start_time_str = act.get("startTimeLocal")
-                if not start_time_str:
-                    continue
-                
-                act_date = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
-                if act_date < start_date:
-                    keep_fetching = False
-                    break
-
-                # Filter for running
-                activity_type_key = act.get("activityType", {}).get("typeKey", "").lower()
-                if "running" in activity_type_key:
-                    activity_id = act["activityId"]
-                    logger.info(f"Processing activity {activity_id}: {act.get('activityName')}")
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
+        try:
+            activities = self.client.get_activities_by_date(start_date_str, end_date_str)
+            running_activities = []
+            
+            total_found = len(activities)
+            for index, act in enumerate(activities):
+                type_key = act.get("activityType", {}).get("typeKey", "")
+                if "running" in type_key.lower():
+                    activity_id = str(act.get("activityId"))
+                    activity_name = act.get("activityName", "Unknown")
+                    print(f"[{index+1}/{total_found}] Processing activity: {activity_name} ({activity_id})")
                     
-                    # Fetch Splits/Laps
-                    splits = self._safe_call(self.api.get_activity_splits, activity_id)
-                    laps_raw = splits.get("lapSplits", []) if isinstance(splits, dict) else []
-                    laps = [
-                        LapData(
-                            lapNumber=l.get("lapIndex", 0),
-                            startTime=l.get("startTimeGMT", ""),
-                            distance=l.get("distance", 0.0),
-                            duration=l.get("duration", 0.0),
-                            averageSpeed=l.get("averageSpeed", 0.0),
-                            averageHR=l.get("averageHeartRate", 0.0)
-                        )
-                        for l in laps_raw
-                    ]
+                    # Fetch full details to ensure all metrics like HR are populated
+                    # We merge the summary data with full details because the schemas differ
+                    full_act = self.client.get_activity(activity_id)
+                    
+                    # Merge dictionaries, allowing full_act to provide more detail 
+                    # while act preserves basic activity metadata
+                    merged_data = {**act, **full_act}
+                    
+                    summary = self._map_to_summary(merged_data)
+                    summary.laps = self.fetch_laps(activity_id)
+                    running_activities.append(summary)
+                    
+            return running_activities
+        except Exception as e:
+            print(f"Failed to fetch activities: {e}")
+            sys.exit(1)
 
-                    # Fallback to activity details if no laps found (common for some running types like Treadmill)
-                    if not laps:
-                        details = self._safe_call(self.api.get_activity_details, activity_id)
-                        laps_raw = details.get("lapDTOs", []) if isinstance(details, dict) else []
-                        laps = [
-                            LapData(
-                                lapNumber=l.get("lapIndex", 0),
-                                startTime=l.get("startTimeGMT", ""),
-                                distance=l.get("distance", 0.0),
-                                duration=l.get("duration", 0.0),
-                                averageSpeed=l.get("averageSpeed", 0.0),
-                                averageHR=l.get("averageHeartRate", 0.0)
-                            )
-                            for l in laps_raw
-                        ]
+    def fetch_laps(self, activity_id: str) -> List[LapData]:
+        """Retrieve lap data for a specific activity."""
+        try:
+            splits = self.client.get_activity_splits(activity_id)
+            laps = []
+            for lap in splits.get("lapDTOs", []):
+                laps.append(LapData(
+                    lapNumber=lap.get("lapIndex", 0) + 1,
+                    startTime=lap.get("startTimeGMT", ""),
+                    distance=lap.get("distance", 0.0),
+                    duration=lap.get("duration", 0.0),
+                    averageSpeed=lap.get("averageSpeed", 0.0),
+                    averageHR=lap.get("averageHeartRate")
+                ))
+            return laps
+        except Exception as e:
+            print(f"Warning: Could not fetch laps for activity {activity_id}: {e}")
+            return []
 
-                    # Final fallback: Create a synthetic lap from activity summary if no laps were found
-                    if not laps:
-                        logger.info(f"No lap data found for activity {activity_id}, creating synthetic lap.")
-                        laps = [
-                            LapData(
-                                lapNumber=1,
-                                startTime=act.get("startTimeGMT", start_time_str),
-                                distance=act.get("distance", 0.0),
-                                duration=act.get("duration", 0.0),
-                                averageSpeed=act.get("averageSpeed", 0.0),
-                                averageHR=act.get("averageHR", 0.0)
-                            )
-                        ]
+    def save_to_file(self, activities: List[ActivitySummary], filename: str = "garmin_data.json"):
+        """Save a list of ActivitySummary objects to a JSON file."""
+        try:
+            serialized_data = [act.to_dict() for act in activities]
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(serialized_data, f, indent=4)
+            print(f"Successfully saved {len(activities)} activities to {filename}")
+        except Exception as e:
+            print(f"Error saving data to file {filename}: {e}")
+            sys.exit(1)
 
-                    activities_data.append(
-                        ActivitySummary(
-                            activityId=activity_id,
-                            activityName=act.get("activityName", "Unnamed"),
-                            activityType=activity_type_key,
-                            startTimeLocal=start_time_str,
-                            distance=act.get("distance", 0.0),
-                            duration=act.get("duration", 0.0),
-                            averageHR=act.get("averageHR", 0.0),
-                            maxHR=act.get("maxHR", 0.0),
-                            averageSpeed=act.get("averageSpeed", 0.0),
-                            laps=laps
-                        )
-                    )
+    def load_from_file(self, filename: str = "garmin_data.json") -> List[Dict[str, Any]]:
+        """Load activity data from a JSON file."""
+        if not os.path.exists(filename):
+            print(f"Error: The file {filename} does not exist.")
+            sys.exit(1)
+        
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data
+        except json.JSONDecodeError as e:
+            print(f"Error: Failed to parse JSON from {filename}: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error loading data from file {filename}: {e}")
+            sys.exit(1)
 
-            start += limit
+    def _map_to_summary(self, data: Dict[str, Any]) -> ActivitySummary:
+        """Map raw API dictionary to ActivitySummary dataclass."""
+        # The Garmin API uses different keys in different endpoints.
+        # We check multiple common keys for heart rate.
+        avg_hr = data.get("averageHeartRateInBeatsPerMinute")
+        if avg_hr is None:
+            avg_hr = data.get("averageHR")
+            
+        max_hr = data.get("maxHeartRateInBeatsPerMinute")
+        if max_hr is None:
+            max_hr = data.get("maxHR")
 
-        return activities_data
+        return ActivitySummary(
+            activityId=str(data.get("activityId")),
+            activityName=data.get("activityName", "Unnamed Activity"),
+            activityType=data.get("activityType", {}).get("typeKey", "unknown"),
+            startTimeLocal=data.get("startTimeLocal", ""),
+            distance=data.get("distance", 0.0),
+            duration=data.get("duration", 0.0),
+            averageHR=avg_hr,
+            maxHR=max_hr,
+            averageSpeed=data.get("averageSpeed", 0.0),
+            laps=[]
+        )

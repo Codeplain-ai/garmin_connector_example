@@ -8,18 +8,14 @@ requires:
 ***definitions***
 
 - :CLI: is the command-line interface entry point.
-- :FetchCommand: is the command to retrieve data from Garmin.
-- :ChatCommand: is the command to start the interactive chat session.
 
 ***implementation reqs***
 
-- The entry point for the :CLI: must be a file named "main.py".
-- Use the "argparse" library to handle command-line arguments.
+- The entry point for the :CLI: must be a file named "garmin_chat.py".
 
 ***test reqs***
 
 - :CLI: tests must verify:
-  - Correct routing of commands to app logic
   - Handling of missing environment variables
   - Graceful exit on "exit" command during chat
 
